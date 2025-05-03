@@ -1,31 +1,188 @@
 
-import { Candidate } from '@/types';
+import { User, Poll, Candidate, Vote } from '@/types';
 
 // Local storage keys
 const CANDIDATES_KEY = 'democrasee_candidates';
-const VOTED_KEY = 'democrasee_voted';
+const USERS_KEY = 'democrasee_users';
+const POLLS_KEY = 'democrasee_polls';
+const VOTES_KEY = 'democrasee_votes';
+const CURRENT_USER_KEY = 'democrasee_current_user';
 
 // Initialize default data if none exists
 const initializeData = (): void => {
   if (!localStorage.getItem(CANDIDATES_KEY)) {
     localStorage.setItem(CANDIDATES_KEY, JSON.stringify([]));
   }
+  if (!localStorage.getItem(USERS_KEY)) {
+    // Create a default admin user
+    const defaultAdmin: User = {
+      id: 'admin1',
+      username: 'admin',
+      password: 'admin123', // In a real app, this would be hashed
+      isAdmin: true
+    };
+    localStorage.setItem(USERS_KEY, JSON.stringify([defaultAdmin]));
+  }
+  if (!localStorage.getItem(POLLS_KEY)) {
+    localStorage.setItem(POLLS_KEY, JSON.stringify([]));
+  }
+  if (!localStorage.getItem(VOTES_KEY)) {
+    localStorage.setItem(VOTES_KEY, JSON.stringify([]));
+  }
 };
 
-// Get all candidates
-export const getCandidates = (): Candidate[] => {
+// User management
+export const getUsers = (): User[] => {
+  initializeData();
+  try {
+    const data = localStorage.getItem(USERS_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    return [];
+  }
+};
+
+export const registerUser = (username: string, password: string, isAdmin: boolean = false): User | null => {
+  try {
+    const users = getUsers();
+    // Check if username already exists
+    if (users.find(user => user.username === username)) {
+      return null;
+    }
+    
+    const newUser: User = {
+      id: Date.now().toString(),
+      username,
+      password, // In a real app, this would be hashed
+      isAdmin
+    };
+    
+    localStorage.setItem(USERS_KEY, JSON.stringify([...users, newUser]));
+    return newUser;
+  } catch (error) {
+    console.error('Error registering user:', error);
+    return null;
+  }
+};
+
+export const login = (username: string, password: string): User | null => {
+  try {
+    const users = getUsers();
+    const user = users.find(u => u.username === username && u.password === password);
+    
+    if (user) {
+      // Store current user in session
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+      return user;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error logging in:', error);
+    return null;
+  }
+};
+
+export const logout = (): void => {
+  localStorage.removeItem(CURRENT_USER_KEY);
+};
+
+export const getCurrentUser = (): User | null => {
+  try {
+    const userData = localStorage.getItem(CURRENT_USER_KEY);
+    return userData ? JSON.parse(userData) : null;
+  } catch (error) {
+    console.error('Error getting current user:', error);
+    return null;
+  }
+};
+
+// Poll management
+export const getPolls = (): Poll[] => {
+  initializeData();
+  try {
+    const data = localStorage.getItem(POLLS_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Error fetching polls:', error);
+    return [];
+  }
+};
+
+export const createPoll = (poll: Omit<Poll, 'id' | 'isActive'>): Poll | null => {
+  try {
+    const currentUser = getCurrentUser();
+    if (!currentUser?.isAdmin) {
+      return null; // Only admins can create polls
+    }
+
+    const polls = getPolls();
+    const newPoll: Poll = {
+      ...poll,
+      id: Date.now().toString(),
+      isActive: false, // Polls start as inactive until start date
+      createdBy: currentUser.id
+    };
+    
+    localStorage.setItem(POLLS_KEY, JSON.stringify([...polls, newPoll]));
+    return newPoll;
+  } catch (error) {
+    console.error('Error creating poll:', error);
+    return null;
+  }
+};
+
+export const updatePollStatus = (): void => {
+  try {
+    const polls = getPolls();
+    const now = new Date().toISOString();
+    
+    const updatedPolls = polls.map(poll => {
+      const startDate = new Date(poll.startDate).toISOString();
+      const endDate = new Date(poll.endDate).toISOString();
+      
+      // If current time is between start and end dates, poll is active
+      const isActive = now >= startDate && now <= endDate;
+      
+      return { ...poll, isActive };
+    });
+    
+    localStorage.setItem(POLLS_KEY, JSON.stringify(updatedPolls));
+  } catch (error) {
+    console.error('Error updating poll status:', error);
+  }
+};
+
+export const getPollById = (pollId: string): Poll | null => {
+  try {
+    const polls = getPolls();
+    return polls.find(poll => poll.id === pollId) || null;
+  } catch (error) {
+    console.error('Error getting poll:', error);
+    return null;
+  }
+};
+
+// Candidate management
+export const getCandidates = (pollId?: string): Candidate[] => {
   initializeData();
   try {
     const data = localStorage.getItem(CANDIDATES_KEY);
-    return data ? JSON.parse(data) : [];
+    const candidates = data ? JSON.parse(data) : [];
+    
+    if (pollId) {
+      return candidates.filter((candidate: Candidate) => candidate.pollId === pollId);
+    }
+    
+    return candidates;
   } catch (error) {
     console.error('Error fetching candidates:', error);
     return [];
   }
 };
 
-// Add a candidate
-export const addCandidate = (candidate: Omit<Candidate, 'id' | 'votes'>): Candidate => {
+export const addCandidate = (candidate: Omit<Candidate, 'id' | 'votes'>): Candidate | null => {
   try {
     const candidates = getCandidates();
     const newCandidate: Candidate = {
@@ -38,58 +195,10 @@ export const addCandidate = (candidate: Omit<Candidate, 'id' | 'votes'>): Candid
     return newCandidate;
   } catch (error) {
     console.error('Error adding candidate:', error);
-    throw new Error('Failed to add candidate');
+    return null;
   }
 };
 
-// Vote for a candidate
-export const voteForCandidate = (candidateId: string): boolean => {
-  try {
-    // Check if user has already voted
-    const hasVoted = localStorage.getItem(VOTED_KEY) === 'true';
-    if (hasVoted) {
-      return false;
-    }
-    
-    const candidates = getCandidates();
-    const updatedCandidates = candidates.map(candidate => 
-      candidate.id === candidateId 
-        ? { ...candidate, votes: candidate.votes + 1 } 
-        : candidate
-    );
-    
-    localStorage.setItem(CANDIDATES_KEY, JSON.stringify(updatedCandidates));
-    localStorage.setItem(VOTED_KEY, 'true');
-    
-    return true;
-  } catch (error) {
-    console.error('Error voting for candidate:', error);
-    return false;
-  }
-};
-
-// Check if user has already voted
-export const hasUserVoted = (): boolean => {
-  return localStorage.getItem(VOTED_KEY) === 'true';
-};
-
-// Reset voting (admin function)
-export const resetVoting = (): boolean => {
-  try {
-    const candidates = getCandidates();
-    const resetCandidates = candidates.map(candidate => ({ ...candidate, votes: 0 }));
-    
-    localStorage.setItem(CANDIDATES_KEY, JSON.stringify(resetCandidates));
-    localStorage.removeItem(VOTED_KEY);
-    
-    return true;
-  } catch (error) {
-    console.error('Error resetting votes:', error);
-    return false;
-  }
-};
-
-// Remove a candidate (admin function)
 export const removeCandidate = (candidateId: string): boolean => {
   try {
     const candidates = getCandidates();
@@ -103,16 +212,132 @@ export const removeCandidate = (candidateId: string): boolean => {
   }
 };
 
-// Export candidates to JSON file
-export const exportCandidatesToJson = (): void => {
-  const candidates = getCandidates();
-  const dataStr = JSON.stringify(candidates, null, 2);
+// Vote management
+export const getVotes = (): Vote[] => {
+  initializeData();
+  try {
+    const data = localStorage.getItem(VOTES_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Error fetching votes:', error);
+    return [];
+  }
+};
+
+export const hasUserVotedInPoll = (userId: string, pollId: string): boolean => {
+  try {
+    const votes = getVotes();
+    return votes.some(vote => vote.userId === userId && vote.pollId === pollId);
+  } catch (error) {
+    console.error('Error checking if user voted:', error);
+    return false;
+  }
+};
+
+export const voteForCandidate = (pollId: string, candidateId: string): boolean => {
+  try {
+    const currentUser = getCurrentUser();
+    if (!currentUser) return false;
+    
+    // Check if user has already voted in this poll
+    if (hasUserVotedInPoll(currentUser.id, pollId)) {
+      return false;
+    }
+    
+    // Add vote record
+    const votes = getVotes();
+    const newVote: Vote = {
+      userId: currentUser.id,
+      pollId,
+      candidateId,
+      timestamp: new Date().toISOString()
+    };
+    localStorage.setItem(VOTES_KEY, JSON.stringify([...votes, newVote]));
+    
+    // Update candidate votes
+    const candidates = getCandidates();
+    const updatedCandidates = candidates.map(candidate => 
+      candidate.id === candidateId 
+        ? { ...candidate, votes: candidate.votes + 1 } 
+        : candidate
+    );
+    
+    localStorage.setItem(CANDIDATES_KEY, JSON.stringify(updatedCandidates));
+    
+    return true;
+  } catch (error) {
+    console.error('Error voting for candidate:', error);
+    return false;
+  }
+};
+
+// Reset voting (admin function)
+export const resetVoting = (pollId: string): boolean => {
+  try {
+    const candidates = getCandidates();
+    const resetCandidates = candidates.map(candidate => 
+      candidate.pollId === pollId 
+        ? { ...candidate, votes: 0 } 
+        : candidate
+    );
+    
+    localStorage.setItem(CANDIDATES_KEY, JSON.stringify(resetCandidates));
+    
+    // Remove votes for this poll
+    const votes = getVotes();
+    const filteredVotes = votes.filter(vote => vote.pollId !== pollId);
+    localStorage.setItem(VOTES_KEY, JSON.stringify(filteredVotes));
+    
+    return true;
+  } catch (error) {
+    console.error('Error resetting votes:', error);
+    return false;
+  }
+};
+
+// Export results to JSON file
+export const exportPollResultsToJson = (pollId: string): void => {
+  const poll = getPollById(pollId);
+  const candidates = getCandidates(pollId);
+  
+  const results = {
+    poll,
+    candidates,
+    totalVotes: candidates.reduce((sum, c) => sum + c.votes, 0),
+    exportedAt: new Date().toISOString()
+  };
+  
+  const dataStr = JSON.stringify(results, null, 2);
   const dataUri = `data:application/json;charset=utf-8,${encodeURIComponent(dataStr)}`;
   
-  const exportFileDefaultName = `democrasee_results_${new Date().toLocaleDateString().replace(/\//g, '-')}.json`;
+  const exportFileDefaultName = `democrasee_results_${poll?.title || pollId}_${new Date().toLocaleDateString().replace(/\//g, '-')}.json`;
   
   const linkElement = document.createElement('a');
   linkElement.setAttribute('href', dataUri);
   linkElement.setAttribute('download', exportFileDefaultName);
   linkElement.click();
+};
+
+// Check poll status (if it has candidates or is expired)
+export const getPollStatus = (pollId: string): { 
+  hasStarted: boolean, 
+  hasEnded: boolean, 
+  candidateCount: number 
+} => {
+  const poll = getPollById(pollId);
+  const candidates = getCandidates(pollId);
+  const now = new Date();
+  
+  if (!poll) {
+    return { hasStarted: false, hasEnded: true, candidateCount: 0 };
+  }
+  
+  const startDate = new Date(poll.startDate);
+  const endDate = new Date(poll.endDate);
+  
+  return {
+    hasStarted: now >= startDate,
+    hasEnded: now > endDate,
+    candidateCount: candidates.length
+  };
 };

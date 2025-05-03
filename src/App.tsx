@@ -9,6 +9,9 @@ import Admin from "./pages/Admin";
 import Vote from "./pages/Vote";
 import Results from "./pages/Results";
 import NotFound from "./pages/NotFound";
+import PollVoting from "./pages/PollVoting";
+import CandidateRegistration from "./pages/CandidateRegistration";
+import PollManagement from "./pages/PollManagement";
 
 const queryClient = new QueryClient();
 
@@ -21,8 +24,11 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/admin/polls/:pollId" element={<PollManagement />} />
           <Route path="/vote" element={<Vote />} />
+          <Route path="/vote/:pollId" element={<PollVoting />} />
           <Route path="/results" element={<Results />} />
+          <Route path="/candidate-registration" element={<CandidateRegistration />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

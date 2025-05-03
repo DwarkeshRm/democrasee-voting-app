@@ -1,172 +1,92 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { addCandidate, getCandidates, removeCandidate, resetVoting, exportCandidatesToJson } from '@/services/votingService';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  getCurrentUser, 
+  getPolls, 
+  updatePollStatus 
+} from '@/services/votingService';
 import Layout from '@/components/layout/Layout';
-import CandidateCard from '@/components/candidates/CandidateCard';
-import { AlertCircle, Download, RefreshCw } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import CreatePollForm from '@/components/polls/CreatePollForm';
+import PollCard from '@/components/polls/PollCard';
+import { Poll } from '@/types';
 
 const Admin = () => {
   const { toast } = useToast();
-  const [candidateName, setCandidateName] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [candidates, setCandidates] = useState(() => getCandidates());
-
-  const handleAddCandidate = () => {
-    if (!candidateName.trim()) {
+  const navigate = useNavigate();
+  const [polls, setPolls] = useState<Poll[]>([]);
+  const [activeTab, setActiveTab] = useState('polls');
+  
+  useEffect(() => {
+    // Check if user is admin
+    const user = getCurrentUser();
+    if (!user || !user.isAdmin) {
       toast({
-        title: "Error",
-        description: "Candidate name is required",
+        title: "Access Denied",
+        description: "You must be an admin to access this page",
         variant: "destructive",
       });
+      navigate('/');
       return;
     }
-
-    try {
-      addCandidate({ name: candidateName, imageUrl });
-      setCandidates(getCandidates());
-      setCandidateName('');
-      setImageUrl('');
-      toast({
-        title: "Success",
-        description: "Candidate added successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to add candidate",
-        variant: "destructive",
-      });
-    }
+    
+    loadPolls();
+    
+    // Set up interval to update poll statuses
+    const interval = setInterval(() => {
+      updatePollStatus();
+      loadPolls();
+    }, 60000); // Check every minute
+    
+    return () => clearInterval(interval);
+  }, [navigate, toast]);
+  
+  const loadPolls = () => {
+    updatePollStatus();
+    setPolls(getPolls());
   };
-
-  const handleRemoveCandidate = (id: string) => {
-    if (removeCandidate(id)) {
-      setCandidates(getCandidates());
-      toast({
-        title: "Success",
-        description: "Candidate removed successfully",
-      });
-    } else {
-      toast({
-        title: "Error",
-        description: "Failed to remove candidate",
-        variant: "destructive",
-      });
-    }
+  
+  const handlePollCreated = () => {
+    loadPolls();
+    setActiveTab('polls');
   };
-
-  const handleResetVoting = () => {
-    if (resetVoting()) {
-      setCandidates(getCandidates());
-      toast({
-        title: "Success",
-        description: "Voting has been reset",
-      });
-    } else {
-      toast({
-        title: "Error",
-        description: "Failed to reset voting",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleExportResults = () => {
-    exportCandidatesToJson();
-    toast({
-      title: "Success",
-      description: "Results exported successfully",
-    });
-  };
-
+  
   return (
     <Layout>
       <h1 className="page-header">Admin Panel</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="md:col-span-2">
-          <Card>
-            <CardHeader className="border-b">
-              <h2 className="text-xl font-bold">Add New Candidate</h2>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="space-y-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="name">Candidate Name</Label>
-                  <Input 
-                    id="name" 
-                    value={candidateName} 
-                    onChange={(e) => setCandidateName(e.target.value)} 
-                    placeholder="Enter candidate name"
-                  />
-                </div>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="image">Image URL</Label>
-                  <Input 
-                    id="image" 
-                    value={imageUrl} 
-                    onChange={(e) => setImageUrl(e.target.value)} 
-                    placeholder="Enter image URL (optional)"
-                  />
-                </div>
-                
-                <Button onClick={handleAddCandidate} className="w-full">
-                  Add Candidate
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <div className="mt-8 flex flex-col sm:flex-row gap-4">
-            <Button 
-              variant="outline" 
-              onClick={handleResetVoting}
-              className="flex-1"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" /> Reset All Votes
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={handleExportResults}
-              className="flex-1"
-            >
-              <Download className="h-4 w-4 mr-2" /> Export Results (JSON)
-            </Button>
-          </div>
-        </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid grid-cols-2 mb-8">
+          <TabsTrigger value="polls">Manage Polls</TabsTrigger>
+          <TabsTrigger value="create">Create Poll</TabsTrigger>
+        </TabsList>
         
-        <div>
-          <h2 className="text-xl font-bold mb-4">Current Candidates</h2>
-          {candidates.length === 0 ? (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>No candidates</AlertTitle>
-              <AlertDescription>
-                Add a candidate to get started with the voting process.
-              </AlertDescription>
-            </Alert>
-          ) : (
-            <div className="space-y-4">
-              {candidates.map((candidate) => (
-                <CandidateCard
-                  key={candidate.id}
-                  candidate={candidate}
-                  isAdmin={true}
-                  onDelete={handleRemoveCandidate}
-                  isVoted={false}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+        <TabsContent value="polls">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {polls.length > 0 ? (
+              polls.map((poll) => (
+                <PollCard key={poll.id} poll={poll} isAdmin={true} />
+              ))
+            ) : (
+              <div className="col-span-full text-center p-10 bg-gray-50 rounded-lg">
+                <h2 className="text-xl font-semibold text-gray-600 mb-2">No polls created</h2>
+                <p className="text-gray-500 mb-4">Click the "Create Poll" tab to create your first poll.</p>
+                <Button onClick={() => setActiveTab('create')}>Create a Poll</Button>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="create">
+          <div className="max-w-2xl mx-auto">
+            <CreatePollForm onPollCreated={handlePollCreated} />
+          </div>
+        </TabsContent>
+      </Tabs>
     </Layout>
   );
 };
