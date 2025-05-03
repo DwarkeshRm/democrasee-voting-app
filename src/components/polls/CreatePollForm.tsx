@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { createPoll } from '@/services/votingService';
+import { createPoll, getCurrentUser } from '@/services/votingService';
 
 interface CreatePollFormProps {
   onPollCreated: () => void;
@@ -20,6 +20,17 @@ const CreatePollForm = ({ onPollCreated }: CreatePollFormProps) => {
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check if user is logged in
+    const currentUser = getCurrentUser();
+    if (!currentUser || !currentUser.isAdmin) {
+      toast({
+        title: "Error",
+        description: "You must be an admin to create polls",
+        variant: "destructive",
+      });
+      return;
+    }
     
     if (!title.trim() || !description.trim() || !startDate || !endDate) {
       toast({
@@ -57,7 +68,8 @@ const CreatePollForm = ({ onPollCreated }: CreatePollFormProps) => {
       title,
       description,
       startDate: start.toISOString(),
-      endDate: end.toISOString()
+      endDate: end.toISOString(),
+      createdBy: currentUser.id  // Add the createdBy property with the current user's ID
     });
     
     if (poll) {
