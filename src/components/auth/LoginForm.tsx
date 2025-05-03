@@ -35,7 +35,9 @@ const LoginForm = ({ onLoginSuccess, onRegisterClick }: LoginFormProps) => {
     if (user) {
       toast({
         title: "Login successful",
-        description: `Welcome back, ${user.username}!`,
+        description: user.isAdmin 
+          ? `Welcome back, Admin ${user.username}!` 
+          : `Welcome back, ${user.username}!`,
       });
       onLoginSuccess();
     } else {
@@ -83,6 +85,10 @@ const LoginForm = ({ onLoginSuccess, onRegisterClick }: LoginFormProps) => {
           <Button type="submit" className="w-full">
             Login
           </Button>
+          
+          <p className="text-center text-sm text-muted-foreground">
+            Use your regular or admin credentials to login
+          </p>
         </form>
       </CardContent>
       <CardFooter className="flex justify-center">

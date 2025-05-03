@@ -5,16 +5,18 @@ import {
   getCurrentUser, 
   getPolls,
   getPollById,
-  getCandidates 
+  getCandidates, 
+  exportPollResultsToJson
 } from '@/services/votingService';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Download } from 'lucide-react';
+import { Download, FilePdf } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Poll, Candidate } from '@/types';
-import { exportPollResultsToJson } from '@/services/votingService';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const Results = () => {
   const navigate = useNavigate();
@@ -51,10 +53,55 @@ const Results = () => {
     }
   }, [selectedPollId]);
   
-  const handleExport = () => {
+  const handleExportToJson = () => {
     if (selectedPollId) {
       exportPollResultsToJson(selectedPollId);
     }
+  };
+  
+  const handleExportToPdf = () => {
+    if (!selectedPoll) return;
+    
+    const doc = new jsPDF();
+    
+    // Add title
+    doc.setFontSize(18);
+    doc.text(`Election Results: ${selectedPoll.title}`, 14, 22);
+    
+    // Add description
+    doc.setFontSize(12);
+    doc.text(`${selectedPoll.description}`, 14, 32);
+    
+    // Add date information
+    const startDate = new Date(selectedPoll.startDate).toLocaleString();
+    const endDate = new Date(selectedPoll.endDate).toLocaleString();
+    doc.setFontSize(10);
+    doc.text(`Poll period: ${startDate} - ${endDate}`, 14, 42);
+    doc.text(`Total votes: ${totalVotes}`, 14, 48);
+    
+    // Create the table
+    const tableData = candidates.map(candidate => [
+      candidate.name, 
+      candidate.votes.toString(),
+      totalVotes > 0 ? `${Math.round((candidate.votes / totalVotes) * 100)}%` : '0%'
+    ]);
+    
+    autoTable(doc, {
+      head: [['Candidate', 'Votes', 'Percentage']],
+      body: tableData,
+      startY: 55,
+      theme: 'grid',
+      headStyles: { fillColor: [59, 130, 246] }
+    });
+    
+    // Add footer with timestamp
+    const timestamp = new Date().toLocaleString();
+    const pageCount = doc.internal.getNumberOfPages();
+    doc.setFontSize(8);
+    doc.text(`Generated on: ${timestamp} - DemocraSee Voting System`, 14, doc.internal.pageSize.height - 10);
+    
+    // Save the PDF
+    doc.save(`${selectedPoll.title}_results.pdf`);
   };
   
   const colors = ['#3b82f6', '#2563eb', '#1d4ed8', '#1e40af', '#1e3a8a'];
@@ -75,9 +122,14 @@ const Results = () => {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Election Results</h1>
         {selectedPollId && (
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" /> Export Results
-          </Button>
+          <div className="flex space-x-2">
+            <Button variant="outline" onClick={handleExportToJson}>
+              <Download className="h-4 w-4 mr-2" /> Export to JSON
+            </Button>
+            <Button variant="outline" onClick={handleExportToPdf}>
+              <FilePdf className="h-4 w-4 mr-2" /> Export to PDF
+            </Button>
+          </div>
         )}
       </div>
       
