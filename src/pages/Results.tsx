@@ -12,7 +12,7 @@ import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Download, FilePdf } from 'lucide-react';
+import { Download, FileText } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Poll, Candidate } from '@/types';
 import jsPDF from 'jspdf';
@@ -96,7 +96,7 @@ const Results = () => {
     
     // Add footer with timestamp
     const timestamp = new Date().toLocaleString();
-    const pageCount = doc.internal.getNumberOfPages();
+    const pageCount = doc.internal.pages.length - 1;
     doc.setFontSize(8);
     doc.text(`Generated on: ${timestamp} - DemocraSee Voting System`, 14, doc.internal.pageSize.height - 10);
     
@@ -127,7 +127,7 @@ const Results = () => {
               <Download className="h-4 w-4 mr-2" /> Export to JSON
             </Button>
             <Button variant="outline" onClick={handleExportToPdf}>
-              <FilePdf className="h-4 w-4 mr-2" /> Export to PDF
+              <FileText className="h-4 w-4 mr-2" /> Export to PDF
             </Button>
           </div>
         )}
