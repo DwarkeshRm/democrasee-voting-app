@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
@@ -56,6 +55,13 @@ const PollManagement = () => {
   const [newEndDate, setNewEndDate] = useState<Date | undefined>(undefined);
   const [shareableLink, setShareableLink] = useState('');
   const [isLinkCopied, setIsLinkCopied] = useState(false);
+  
+  // Helper function to get today's date with time set to 00:00:00
+  const getTodayStart = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  };
   
   useEffect(() => {
     // Check if user is admin
@@ -515,6 +521,10 @@ const PollManagement = () => {
                     selected={newStartDate}
                     onSelect={setNewStartDate}
                     initialFocus
+                    disabled={(date) => {
+                      const today = getTodayStart();
+                      return date < today;
+                    }}
                     className="p-3 pointer-events-auto"
                   />
                 </PopoverContent>
@@ -555,9 +565,10 @@ const PollManagement = () => {
                     selected={newEndDate}
                     onSelect={setNewEndDate}
                     initialFocus
-                    disabled={(date) => 
-                      newStartDate ? date < newStartDate : false
-                    }
+                    disabled={(date) => {
+                      const today = getTodayStart();
+                      return date < today || (newStartDate ? date < newStartDate : false);
+                    }}
                     className="p-3 pointer-events-auto"
                   />
                 </PopoverContent>

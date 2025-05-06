@@ -60,13 +60,14 @@ const CreatePollForm = ({ onPollCreated }: CreatePollFormProps) => {
     const [endHours, endMinutes] = endTime.split(':').map(Number);
     fullEndDate.setHours(endHours, endMinutes);
     
-    // Validate dates
+    // Validate dates - allowing today's date but not past dates
     const now = new Date();
+    now.setHours(0, 0, 0, 0); // Set to beginning of day for proper comparison
     
     if (fullStartDate < now) {
       toast({
         title: "Error",
-        description: "Start date must be in the future",
+        description: "Start date must be today or in the future",
         variant: "destructive",
       });
       return;
@@ -112,6 +113,13 @@ const CreatePollForm = ({ onPollCreated }: CreatePollFormProps) => {
     }
   };
   
+  // Helper function to get today's date with time set to 00:00:00
+  const getTodayStart = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  };
+
   return (
     <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-100 shadow-md">
       <CardHeader className="bg-gradient-to-r from-blue-100/50 to-purple-100/50">
@@ -166,7 +174,10 @@ const CreatePollForm = ({ onPollCreated }: CreatePollFormProps) => {
                       selected={startDate}
                       onSelect={setStartDate}
                       initialFocus
-                      disabled={(date) => date < new Date()}
+                      disabled={(date) => {
+                        const today = getTodayStart();
+                        return date < today;
+                      }}
                       className="p-3 pointer-events-auto"
                     />
                   </PopoverContent>
@@ -208,9 +219,10 @@ const CreatePollForm = ({ onPollCreated }: CreatePollFormProps) => {
                       selected={endDate}
                       onSelect={setEndDate}
                       initialFocus
-                      disabled={(date) => 
-                        date < new Date() || (startDate ? date < startDate : false)
-                      }
+                      disabled={(date) => {
+                        const today = getTodayStart();
+                        return date < today || (startDate ? date < startDate : false);
+                      }}
                       className="p-3 pointer-events-auto"
                     />
                   </PopoverContent>
