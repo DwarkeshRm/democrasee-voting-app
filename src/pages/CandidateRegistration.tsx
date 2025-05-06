@@ -13,8 +13,9 @@ import { Poll } from '@/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Link as LinkIcon } from 'lucide-react';
 import CandidateRegistrationForm from '@/components/candidates/CandidateRegistrationForm';
+import { Button } from '@/components/ui/button';
 
 const CandidateRegistration = () => {
   const navigate = useNavigate();
@@ -92,6 +93,21 @@ const CandidateRegistration = () => {
     });
   };
   
+  const getCandidateRegistrationLink = () => {
+    if (!selectedPollId) return '';
+    
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/candidate-registration?pollId=${selectedPollId}`;
+  };
+  
+  const copyShareLink = () => {
+    const link = getCandidateRegistrationLink();
+    navigator.clipboard.writeText(link);
+    toast({
+      description: "Share link copied to clipboard",
+    });
+  };
+  
   return (
     <Layout>
       <div className="max-w-3xl mx-auto">
@@ -139,6 +155,18 @@ const CandidateRegistration = () => {
                     <div>
                       <span className="font-medium">Candidates:</span> {pollStatus.candidateCount}
                     </div>
+                  </div>
+                  
+                  <div className="mt-4 pt-4 border-t border-blue-100">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex items-center text-blue-600"
+                      onClick={copyShareLink}
+                    >
+                      <LinkIcon className="h-4 w-4 mr-2" />
+                      Copy Share Link for Candidate Registration
+                    </Button>
                   </div>
                 </div>
                 

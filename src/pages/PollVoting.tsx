@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { 
@@ -8,18 +8,23 @@ import {
   getPollById,
   getCandidates,
   hasUserVotedInPoll,
-  voteForCandidate
+  voteForCandidate,
+  getUserVoteInPoll
 } from '@/services/votingService';
 import { Candidate, Poll } from '@/types';
 import Layout from '@/components/layout/Layout';
 import CandidateCard from '@/components/candidates/CandidateCard';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, Check, Clock, Lock } from 'lucide-react';
+import { AlertCircle, Check, Clock } from 'lucide-react';
 
 const PollVoting = () => {
   const { pollId } = useParams<{ pollId: string }>();
+  const [searchParams] = useSearchParams();
+  const directPollId = searchParams.get('pollId');
   const { toast } = useToast();
   const navigate = useNavigate();
+  
+  const activePollId = pollId || directPollId;
   
   const [poll, setPoll] = useState<Poll | null>(null);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -40,13 +45,13 @@ const PollVoting = () => {
       return;
     }
     
-    if (!pollId) {
+    if (!activePollId) {
       navigate('/vote');
       return;
     }
     
     // Load poll and check if user can vote
-    const loadedPoll = getPollById(pollId);
+    const loadedPoll = getPollById(activePollId);
     
     if (!loadedPoll) {
       toast({
@@ -77,24 +82,26 @@ const PollVoting = () => {
     
     if (now > endDate) {
       // If poll has ended, redirect to results
-      navigate(`/results?pollId=${pollId}`);
+      navigate(`/results?pollId=${activePollId}`);
       return;
     }
     
     // Load candidates
-    const pollCandidates = getCandidates(pollId);
+    const pollCandidates = getCandidates(activePollId);
     setCandidates(pollCandidates);
     
-    // Check if user has already voted
-    const hasVoted = hasUserVotedInPoll(user.id, pollId);
+    // Check if user has already voted and get their vote
+    const hasVoted = hasUserVotedInPoll(user.id, activePollId);
     setIsVoted(hasVoted);
     
-    // This is a simplification, in a real app we would store which candidate the user voted for
-    // Here we just note that the user has voted, not who they voted for
-    setUserVotedFor(undefined);
+    // Get which candidate the user voted for
+    if (hasVoted) {
+      const votedFor = getUserVoteInPoll(user.id, activePollId);
+      setUserVotedFor(votedFor);
+    }
     
     setLoading(false);
-  }, [pollId, navigate, toast]);
+  }, [activePollId, navigate, toast]);
   
   const handleVote = (candidateId: string) => {
     if (isVoted) {
@@ -106,13 +113,13 @@ const PollVoting = () => {
       return;
     }
     
-    if (!pollId) return;
+    if (!activePollId) return;
     
-    const success = voteForCandidate(pollId, candidateId);
+    const success = voteForCandidate(activePollId, candidateId);
     if (success) {
       setIsVoted(true);
       setUserVotedFor(candidateId);
-      setCandidates(getCandidates(pollId));
+      setCandidates(getCandidates(activePollId));
       toast({
         title: "Vote counted!",
         description: "Thank you for voting",

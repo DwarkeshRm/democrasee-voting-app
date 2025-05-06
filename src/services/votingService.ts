@@ -228,10 +228,15 @@ export const getPollById = (pollId: string): Poll | null => {
   }
 };
 
-// Generate shareable link for a poll
-export const generateShareableLink = (pollId: string): string => {
-  // Remove any AI service or internal names from the link
-  return `${window.location.origin}/vote/${pollId}`;
+// Generate shareable links for polls
+export const generateShareableLink = (pollId: string, type: 'vote' | 'candidate' = 'vote'): string => {
+  // Create clean URL without any AI service or internal names
+  const baseUrl = window.location.origin;
+  if (type === 'vote') {
+    return `${baseUrl}/vote/${pollId}`;
+  } else {
+    return `${baseUrl}/candidate-registration?pollId=${pollId}`;
+  }
 };
 
 // Candidate management
@@ -252,13 +257,34 @@ export const getCandidates = (pollId?: string): Candidate[] => {
   }
 };
 
+// Check if user has already registered as a candidate in this poll
+export const hasUserRegisteredAsCandidate = (userId: string, pollId: string): boolean => {
+  try {
+    const candidates = getCandidates(pollId);
+    return candidates.some(candidate => candidate.userId === userId);
+  } catch (error) {
+    console.error('Error checking candidate registration:', error);
+    return false;
+  }
+};
+
 export const addCandidate = (candidate: Omit<Candidate, 'id' | 'votes'>): Candidate | null => {
   try {
+    const currentUser = getCurrentUser();
+    if (!currentUser) return null;
+    
+    // Check if user has already registered as a candidate in this poll
+    if (hasUserRegisteredAsCandidate(currentUser.id, candidate.pollId)) {
+      console.error('User has already registered as a candidate in this poll');
+      return null;
+    }
+    
     const candidates = getCandidates();
     const newCandidate: Candidate = {
       ...candidate,
       id: Date.now().toString(),
-      votes: 0
+      votes: 0,
+      userId: currentUser.id // Store the user ID who registered this candidate
     };
     
     localStorage.setItem(CANDIDATES_KEY, JSON.stringify([...candidates, newCandidate]));
@@ -301,6 +327,17 @@ export const hasUserVotedInPoll = (userId: string, pollId: string): boolean => {
   } catch (error) {
     console.error('Error checking if user voted:', error);
     return false;
+  }
+};
+
+export const getUserVoteInPoll = (userId: string, pollId: string): string | undefined => {
+  try {
+    const votes = getVotes();
+    const vote = votes.find(vote => vote.userId === userId && vote.pollId === pollId);
+    return vote?.candidateId;
+  } catch (error) {
+    console.error('Error getting user vote:', error);
+    return undefined;
   }
 };
 
@@ -363,11 +400,6 @@ export const resetVoting = (pollId: string): boolean => {
     console.error('Error resetting votes:', error);
     return false;
   }
-};
-
-// Export results to PDF (using jsPDF)
-export const exportPollResultsToPdf = (pollId: string): void => {
-  // This functionality is now in the Results.tsx component
 };
 
 // Export results to JSON file

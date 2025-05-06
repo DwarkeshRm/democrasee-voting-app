@@ -9,9 +9,12 @@ import {
   addCandidate, 
   getCurrentUser,
   getPollById,
-  candidateSymbols
+  candidateSymbols,
+  hasUserRegisteredAsCandidate
 } from '@/services/votingService';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 interface CandidateRegistrationFormProps {
   pollId: string;
@@ -24,12 +27,21 @@ const CandidateRegistrationForm = ({ pollId, onCandidateAdded }: CandidateRegist
   const [imageUrl, setImageUrl] = useState('');
   const [selectedSymbol, setSelectedSymbol] = useState('');
   const [showSymbols, setShowSymbols] = useState(false);
+  const [alreadyRegistered, setAlreadyRegistered] = useState(false);
   
   useEffect(() => {
     if (pollId) {
       const poll = getPollById(pollId);
       if (poll) {
         setShowSymbols(poll.showSymbols || false);
+      }
+      
+      // Check if user has already registered as a candidate for this poll
+      const currentUser = getCurrentUser();
+      if (currentUser && hasUserRegisteredAsCandidate(currentUser.id, pollId)) {
+        setAlreadyRegistered(true);
+      } else {
+        setAlreadyRegistered(false);
       }
     }
   }, [pollId]);
@@ -42,6 +54,16 @@ const CandidateRegistrationForm = ({ pollId, onCandidateAdded }: CandidateRegist
       toast({
         title: "Error",
         description: "You must be logged in to register a candidate",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Check if user has already registered as a candidate for this poll
+    if (hasUserRegisteredAsCandidate(currentUser.id, pollId)) {
+      toast({
+        title: "Error",
+        description: "You have already registered as a candidate for this poll",
         variant: "destructive",
       });
       return;
@@ -86,6 +108,7 @@ const CandidateRegistrationForm = ({ pollId, onCandidateAdded }: CandidateRegist
       setName('');
       setImageUrl('');
       setSelectedSymbol('');
+      setAlreadyRegistered(true);
       onCandidateAdded();
     } else {
       toast({
@@ -95,6 +118,18 @@ const CandidateRegistrationForm = ({ pollId, onCandidateAdded }: CandidateRegist
       });
     }
   };
+  
+  if (alreadyRegistered) {
+    return (
+      <Alert className="bg-yellow-50 border-yellow-200">
+        <AlertCircle className="h-4 w-4 text-yellow-600" />
+        <AlertTitle className="text-yellow-800">Already Registered</AlertTitle>
+        <AlertDescription className="text-yellow-700">
+          You have already registered as a candidate for this poll. One account can only register once per poll.
+        </AlertDescription>
+      </Alert>
+    );
+  }
   
   return (
     <Card className="bg-gradient-to-r from-blue-50 to-blue-50 border-2 border-blue-100">

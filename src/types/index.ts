@@ -24,6 +24,7 @@ export interface Candidate {
   imageUrl?: string;
   symbol?: string; // Symbol for candidate if using symbols instead of images
   votes: number;
+  userId: string; // Added to track which user created this candidate
 }
 
 export interface Vote {

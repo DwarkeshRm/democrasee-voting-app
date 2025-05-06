@@ -1,11 +1,14 @@
 
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Poll } from '@/types';
-import { Calendar, Clock } from 'lucide-react';
+import { Calendar, Clock, Link as LinkIcon, Share2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getCurrentUser } from '@/services/votingService';
+import { getCurrentUser, generateShareableLink } from '@/services/votingService';
+import { useToast } from '@/components/ui/use-toast';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface PollCardProps {
   poll: Poll;
@@ -14,6 +17,8 @@ interface PollCardProps {
 
 const PollCard = ({ poll, isAdmin = false }: PollCardProps) => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [showShareMenu, setShowShareMenu] = useState(false);
   const startDate = new Date(poll.startDate);
   const endDate = new Date(poll.endDate);
   const now = new Date();
@@ -50,10 +55,42 @@ const PollCard = ({ poll, isAdmin = false }: PollCardProps) => {
     }
   };
   
+  const copyShareLink = (type: 'vote' | 'candidate') => {
+    const link = generateShareableLink(poll.id, type);
+    navigator.clipboard.writeText(link);
+    toast({
+      description: `${type === 'vote' ? 'Voting' : 'Candidate registration'} link copied to clipboard`,
+    });
+    setShowShareMenu(false);
+  };
+  
   return (
     <Card className="h-full flex flex-col transition-transform duration-300 hover:scale-[1.02] border-2 border-blue-100 hover:border-blue-300 hover:shadow-lg">
       <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-100">
-        <h3 className="text-lg font-bold text-blue-800">{poll.title}</h3>
+        <div className="flex justify-between">
+          <h3 className="text-lg font-bold text-blue-800">{poll.title}</h3>
+          {!hasNotStarted && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Share2 className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => copyShareLink('vote')}>
+                  <LinkIcon className="h-4 w-4 mr-2" />
+                  Copy voting link
+                </DropdownMenuItem>
+                {!hasEnded && (
+                  <DropdownMenuItem onClick={() => copyShareLink('candidate')}>
+                    <LinkIcon className="h-4 w-4 mr-2" />
+                    Copy candidate registration link
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
         <p className="text-sm text-gray-600">{poll.description}</p>
       </CardHeader>
       <CardContent className="flex-grow py-4">
