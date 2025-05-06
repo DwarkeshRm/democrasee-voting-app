@@ -17,9 +17,11 @@ const LoginForm = ({ onLoginSuccess, onRegisterClick }: LoginFormProps) => {
   const { toast } = useToast();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     
     if (!username.trim() || !password.trim()) {
       toast({
@@ -27,26 +29,31 @@ const LoginForm = ({ onLoginSuccess, onRegisterClick }: LoginFormProps) => {
         description: "Please enter both username and password",
         variant: "destructive",
       });
+      setIsLoading(false);
       return;
     }
     
-    const user = login(username, password);
-    
-    if (user) {
-      toast({
-        title: "Login successful",
-        description: user.isAdmin 
-          ? `Welcome back, Admin ${user.username}!` 
-          : `Welcome back, ${user.username}!`,
-      });
-      onLoginSuccess();
-    } else {
-      toast({
-        title: "Login failed",
-        description: "Invalid username or password",
-        variant: "destructive",
-      });
-    }
+    // Add a small delay to simulate network request for better UX
+    setTimeout(() => {
+      const user = login(username, password);
+      
+      if (user) {
+        toast({
+          title: "Login successful",
+          description: user.isAdmin 
+            ? `Welcome back, Admin ${user.username}!` 
+            : `Welcome back, ${user.username}!`,
+        });
+        onLoginSuccess();
+      } else {
+        toast({
+          title: "Login failed",
+          description: "Invalid username or password",
+          variant: "destructive",
+        });
+      }
+      setIsLoading(false);
+    }, 500);
   };
   
   return (
@@ -82,8 +89,8 @@ const LoginForm = ({ onLoginSuccess, onRegisterClick }: LoginFormProps) => {
             />
           </div>
           
-          <Button type="submit" className="w-full">
-            Login
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? "Logging in..." : "Login"}
           </Button>
           
           <p className="text-center text-sm text-muted-foreground">

@@ -1,6 +1,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Candidate } from '@/types';
 import { Trash2 } from 'lucide-react';
 
@@ -30,19 +31,25 @@ const CandidateCard = ({
         <h3 className="text-lg font-bold">{candidate.name}</h3>
       </CardHeader>
       <CardContent className="pt-0 flex justify-center">
-        <div className="relative w-32 h-32 rounded-full overflow-hidden bg-gray-100 mb-4 border">
-          {candidate.imageUrl ? (
-            <img 
-              src={candidate.imageUrl} 
-              alt={candidate.name} 
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-400">
-              No Image
-            </div>
-          )}
-        </div>
+        {candidate.symbol ? (
+          <div className="relative w-32 h-32 rounded-full overflow-hidden flex items-center justify-center bg-blue-50 border border-blue-200 mb-4">
+            <span className="text-6xl">{candidate.symbol}</span>
+          </div>
+        ) : (
+          <div className="relative w-32 h-32 rounded-full overflow-hidden bg-gray-100 mb-4 border">
+            {candidate.imageUrl ? (
+              <img 
+                src={candidate.imageUrl} 
+                alt={candidate.name} 
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                No Image
+              </div>
+            )}
+          </div>
+        )}
       </CardContent>
       <CardFooter className="flex justify-center">
         {isAdmin && onDelete && (

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { VoteIcon, BarChart3, Settings, LogIn } from 'lucide-react';
+import { VoteIcon, BarChart3, Settings, LogIn, RefreshCw } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import LoginForm from '@/components/auth/LoginForm';
 import RegisterForm from '@/components/auth/RegisterForm';
@@ -106,20 +106,37 @@ const Index = () => {
         </Card>
         
         {isAdmin ? (
-          <Card className="transform transition-all hover:scale-105">
-            <CardHeader className="text-center border-b pb-2">
-              <Settings className="h-12 w-12 mx-auto text-primary mb-2" />
-              <h2 className="text-xl font-semibold">Administration</h2>
-            </CardHeader>
-            <CardContent className="pt-6 text-center">
-              <p className="text-gray-600 mb-4">
-                Create polls, manage candidates, reset votes, and export data.
-              </p>
-              <Button asChild>
-                <Link to="/admin">Admin Panel</Link>
-              </Button>
-            </CardContent>
-          </Card>
+          <>
+            <Card className="transform transition-all hover:scale-105">
+              <CardHeader className="text-center border-b pb-2">
+                <Settings className="h-12 w-12 mx-auto text-primary mb-2" />
+                <h2 className="text-xl font-semibold">Administration</h2>
+              </CardHeader>
+              <CardContent className="pt-6 text-center">
+                <p className="text-gray-600 mb-4">
+                  Create polls, manage candidates, reset votes, and export data.
+                </p>
+                <Button asChild>
+                  <Link to="/admin">Admin Panel</Link>
+                </Button>
+              </CardContent>
+            </Card>
+            
+            <Card className="transform transition-all hover:scale-105 md:col-start-2 md:col-span-1">
+              <CardHeader className="text-center border-b pb-2">
+                <RefreshCw className="h-12 w-12 mx-auto text-red-500 mb-2" />
+                <h2 className="text-xl font-semibold">Reset User Data</h2>
+              </CardHeader>
+              <CardContent className="pt-6 text-center">
+                <p className="text-gray-600 mb-4">
+                  Reset all user accounts to start fresh. Admin account will be preserved.
+                </p>
+                <Button asChild variant="destructive">
+                  <Link to="/reset-data">Reset Data</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </>
         ) : (
           <Card className="transform transition-all hover:scale-105">
             <CardHeader className="text-center border-b pb-2">

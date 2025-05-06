@@ -12,6 +12,7 @@ import NotFound from "./pages/NotFound";
 import PollVoting from "./pages/PollVoting";
 import CandidateRegistration from "./pages/CandidateRegistration";
 import PollManagement from "./pages/PollManagement";
+import ResetData from "./pages/ResetData";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/vote/:pollId" element={<PollVoting />} />
           <Route path="/results" element={<Results />} />
           <Route path="/candidate-registration" element={<CandidateRegistration />} />
+          <Route path="/reset-data" element={<ResetData />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

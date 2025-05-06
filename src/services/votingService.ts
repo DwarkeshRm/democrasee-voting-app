@@ -1,3 +1,4 @@
+
 import { User, Poll, Candidate, Vote } from '@/types';
 
 // Local storage keys
@@ -28,6 +29,18 @@ const initializeData = (): void => {
   if (!localStorage.getItem(VOTES_KEY)) {
     localStorage.setItem(VOTES_KEY, JSON.stringify([]));
   }
+};
+
+// Reset all users (except admin)
+export const resetAllUsers = (): void => {
+  const defaultAdmin: User = {
+    id: 'admin1',
+    username: 'admin',
+    password: 'admin123', // In a real app, this would be hashed
+    isAdmin: true
+  };
+  localStorage.setItem(USERS_KEY, JSON.stringify([defaultAdmin]));
+  logout(); // Logout current user to ensure clean state
 };
 
 // User management
@@ -73,6 +86,7 @@ export const login = (username: string, password: string): User | null => {
     if (user) {
       // Store current user in session
       localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+      console.log("User logged in successfully:", user);
       return user;
     }
     
@@ -216,7 +230,7 @@ export const getPollById = (pollId: string): Poll | null => {
 
 // Generate shareable link for a poll
 export const generateShareableLink = (pollId: string): string => {
-  // In a real-world scenario, this could include tokens, etc.
+  // Remove any AI service or internal names from the link
   return `${window.location.origin}/vote/${pollId}`;
 };
 
@@ -377,6 +391,31 @@ export const exportPollResultsToJson = (pollId: string): void => {
   linkElement.setAttribute('href', dataUri);
   linkElement.setAttribute('download', exportFileDefaultName);
   linkElement.click();
+};
+
+// Cancel a poll (admin function)
+export const cancelPoll = (pollId: string): boolean => {
+  try {
+    const poll = getPollById(pollId);
+    if (!poll) return false;
+    
+    const now = new Date();
+    const endDate = new Date(poll.endDate);
+    
+    // Can't cancel if poll has already ended
+    if (now > endDate) return false;
+    
+    const polls = getPolls();
+    const updatedPolls = polls.map(p => 
+      p.id === pollId ? { ...p, isActive: false, endDate: new Date().toISOString() } : p
+    );
+    
+    localStorage.setItem(POLLS_KEY, JSON.stringify(updatedPolls));
+    return true;
+  } catch (error) {
+    console.error('Error canceling poll:', error);
+    return false;
+  }
 };
 
 // Check poll status (if it has candidates or is expired)
