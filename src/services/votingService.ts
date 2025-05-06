@@ -1,4 +1,3 @@
-
 import { User, Poll, Candidate, Vote } from '@/types';
 
 // Local storage keys
@@ -122,7 +121,8 @@ export const createPoll = (poll: Omit<Poll, 'id' | 'isActive'>): Poll | null => 
       ...poll,
       id: Date.now().toString(),
       isActive: false, // Polls start as inactive until start date
-      createdBy: currentUser.id
+      createdBy: currentUser.id,
+      showSymbols: poll.showSymbols || false // Add default value for showSymbols
     };
     
     localStorage.setItem(POLLS_KEY, JSON.stringify([...polls, newPoll]));
@@ -130,6 +130,56 @@ export const createPoll = (poll: Omit<Poll, 'id' | 'isActive'>): Poll | null => 
   } catch (error) {
     console.error('Error creating poll:', error);
     return null;
+  }
+};
+
+export const deletePoll = (pollId: string): boolean => {
+  try {
+    const polls = getPolls();
+    const filteredPolls = polls.filter(poll => poll.id !== pollId);
+    
+    if (filteredPolls.length === polls.length) {
+      return false; // No poll was found to delete
+    }
+    
+    localStorage.setItem(POLLS_KEY, JSON.stringify(filteredPolls));
+    
+    // Also delete all candidates and votes for this poll
+    const candidates = getCandidates();
+    const filteredCandidates = candidates.filter(candidate => candidate.pollId !== pollId);
+    localStorage.setItem(CANDIDATES_KEY, JSON.stringify(filteredCandidates));
+    
+    const votes = getVotes();
+    const filteredVotes = votes.filter(vote => vote.pollId !== pollId);
+    localStorage.setItem(VOTES_KEY, JSON.stringify(filteredVotes));
+    
+    return true;
+  } catch (error) {
+    console.error('Error deleting poll:', error);
+    return false;
+  }
+};
+
+export const updatePollTiming = (pollId: string, startDate: string, endDate: string): boolean => {
+  try {
+    const polls = getPolls();
+    const pollIndex = polls.findIndex(poll => poll.id === pollId);
+    
+    if (pollIndex === -1) {
+      return false;
+    }
+    
+    polls[pollIndex] = {
+      ...polls[pollIndex],
+      startDate,
+      endDate
+    };
+    
+    localStorage.setItem(POLLS_KEY, JSON.stringify(polls));
+    return true;
+  } catch (error) {
+    console.error('Error updating poll timing:', error);
+    return false;
   }
 };
 
@@ -162,6 +212,12 @@ export const getPollById = (pollId: string): Poll | null => {
     console.error('Error getting poll:', error);
     return null;
   }
+};
+
+// Generate shareable link for a poll
+export const generateShareableLink = (pollId: string): string => {
+  // In a real-world scenario, this could include tokens, etc.
+  return `${window.location.origin}/vote/${pollId}`;
 };
 
 // Candidate management
@@ -295,6 +351,11 @@ export const resetVoting = (pollId: string): boolean => {
   }
 };
 
+// Export results to PDF (using jsPDF)
+export const exportPollResultsToPdf = (pollId: string): void => {
+  // This functionality is now in the Results.tsx component
+};
+
 // Export results to JSON file
 export const exportPollResultsToJson = (pollId: string): void => {
   const poll = getPollById(pollId);
@@ -341,3 +402,19 @@ export const getPollStatus = (pollId: string): {
     candidateCount: candidates.length
   };
 };
+
+// Array of available candidate symbols
+export const candidateSymbols = [
+  { id: 'symbol-1', name: 'Star', icon: '⭐' },
+  { id: 'symbol-2', name: 'Heart', icon: '❤️' },
+  { id: 'symbol-3', name: 'Sun', icon: '☀️' },
+  { id: 'symbol-4', name: 'Moon', icon: '🌙' },
+  { id: 'symbol-5', name: 'Tree', icon: '🌳' },
+  { id: 'symbol-6', name: 'Flower', icon: '🌸' },
+  { id: 'symbol-7', name: 'Mountain', icon: '⛰️' },
+  { id: 'symbol-8', name: 'Car', icon: '🚗' },
+  { id: 'symbol-9', name: 'Plane', icon: '✈️' },
+  { id: 'symbol-10', name: 'Ship', icon: '🚢' },
+  { id: 'symbol-11', name: 'Book', icon: '📚' },
+  { id: 'symbol-12', name: 'Check', icon: '✅' }
+];

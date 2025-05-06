@@ -4,8 +4,14 @@ import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { createPoll, getCurrentUser } from '@/services/votingService';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface CreatePollFormProps {
   onPollCreated: () => void;
@@ -15,8 +21,11 @@ const CreatePollForm = ({ onPollCreated }: CreatePollFormProps) => {
   const { toast } = useToast();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [startTime, setStartTime] = useState('12:00');
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [endTime, setEndTime] = useState('12:00');
+  const [showSymbols, setShowSymbols] = useState(false);
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,12 +50,20 @@ const CreatePollForm = ({ onPollCreated }: CreatePollFormProps) => {
       return;
     }
     
+    // Create full start date with time
+    const fullStartDate = new Date(startDate);
+    const [startHours, startMinutes] = startTime.split(':').map(Number);
+    fullStartDate.setHours(startHours, startMinutes);
+
+    // Create full end date with time
+    const fullEndDate = new Date(endDate);
+    const [endHours, endMinutes] = endTime.split(':').map(Number);
+    fullEndDate.setHours(endHours, endMinutes);
+    
     // Validate dates
-    const start = new Date(startDate);
-    const end = new Date(endDate);
     const now = new Date();
     
-    if (start < now) {
+    if (fullStartDate < now) {
       toast({
         title: "Error",
         description: "Start date must be in the future",
@@ -55,7 +72,7 @@ const CreatePollForm = ({ onPollCreated }: CreatePollFormProps) => {
       return;
     }
     
-    if (end <= start) {
+    if (fullEndDate <= fullStartDate) {
       toast({
         title: "Error",
         description: "End date must be after start date",
@@ -67,9 +84,10 @@ const CreatePollForm = ({ onPollCreated }: CreatePollFormProps) => {
     const poll = createPoll({
       title,
       description,
-      startDate: start.toISOString(),
-      endDate: end.toISOString(),
-      createdBy: currentUser.id  // Add the createdBy property with the current user's ID
+      startDate: fullStartDate.toISOString(),
+      endDate: fullEndDate.toISOString(),
+      createdBy: currentUser.id,
+      showSymbols
     });
     
     if (poll) {
@@ -79,8 +97,11 @@ const CreatePollForm = ({ onPollCreated }: CreatePollFormProps) => {
       });
       setTitle('');
       setDescription('');
-      setStartDate('');
-      setEndDate('');
+      setStartDate(undefined);
+      setEndDate(undefined);
+      setStartTime('12:00');
+      setEndTime('12:00');
+      setShowSymbols(false);
       onPollCreated();
     } else {
       toast({
@@ -92,12 +113,12 @@ const CreatePollForm = ({ onPollCreated }: CreatePollFormProps) => {
   };
   
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Create New Poll</CardTitle>
+    <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-100 shadow-md">
+      <CardHeader className="bg-gradient-to-r from-blue-100/50 to-purple-100/50">
+        <CardTitle className="text-blue-800">Create New Poll</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="title">Poll Title</Label>
             <Input 
@@ -105,6 +126,7 @@ const CreatePollForm = ({ onPollCreated }: CreatePollFormProps) => {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter poll title"
+              className="border-blue-200 focus:border-blue-400"
               required
             />
           </div>
@@ -116,35 +138,112 @@ const CreatePollForm = ({ onPollCreated }: CreatePollFormProps) => {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Enter poll description"
+              className="border-blue-200 focus:border-blue-400"
               required
             />
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="startDate">Start Date & Time</Label>
-              <Input 
-                id="startDate" 
-                type="datetime-local"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                required
-              />
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Start Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal border-blue-200",
+                        !startDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {startDate ? format(startDate, "PPP") : <span>Select date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={setStartDate}
+                      initialFocus
+                      disabled={(date) => date < new Date()}
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="startTime">Start Time</Label>
+                <Input 
+                  id="startTime" 
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="border-blue-200 focus:border-blue-400"
+                  required
+                />
+              </div>
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="endDate">End Date & Time</Label>
-              <Input 
-                id="endDate" 
-                type="datetime-local"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                required
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>End Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal border-blue-200",
+                        !endDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {endDate ? format(endDate, "PPP") : <span>Select date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={setEndDate}
+                      initialFocus
+                      disabled={(date) => 
+                        date < new Date() || (startDate ? date < startDate : false)
+                      }
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="endTime">End Time</Label>
+                <Input 
+                  id="endTime" 
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="border-blue-200 focus:border-blue-400"
+                  required
+                />
+              </div>
             </div>
           </div>
           
-          <Button type="submit" className="w-full">
+          <div className="flex items-center space-x-2">
+            <Switch 
+              id="showSymbols" 
+              checked={showSymbols} 
+              onCheckedChange={setShowSymbols} 
+            />
+            <Label htmlFor="showSymbols">Provide symbols for candidates instead of image URLs</Label>
+          </div>
+          
+          <Button 
+            type="submit" 
+            className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+          >
             Create Poll
           </Button>
         </form>

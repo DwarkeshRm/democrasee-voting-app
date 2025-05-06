@@ -1,30 +1,35 @@
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   getCurrentUser, 
-  getPolls, 
-  addCandidate,
-  getCandidates,
+  getPolls,
+  getPollById,
   getPollStatus
 } from '@/services/votingService';
 import Layout from '@/components/layout/Layout';
 import { Poll } from '@/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
+import CandidateRegistrationForm from '@/components/candidates/CandidateRegistrationForm';
 
 const CandidateRegistration = () => {
-  const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const urlPollId = searchParams.get('pollId');
+  
+  const { toast } = useToast();
   const [polls, setPolls] = useState<Poll[]>([]);
-  const [upcomingPolls, setUpcomingPolls] = useState<Poll[]>([]);
-  const [selectedPoll, setSelectedPoll] = useState<string>('');
-  const [candidateName, setCandidateName] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
+  const [selectedPollId, setSelectedPollId] = useState<string | null>(null);
+  const [selectedPoll, setSelectedPoll] = useState<Poll | null>(null);
+  const [pollStatus, setPollStatus] = useState<{
+    hasStarted: boolean;
+    hasEnded: boolean;
+    candidateCount: number;
+  } | null>(null);
   
   useEffect(() => {
     // Check if user is logged in
@@ -39,162 +44,124 @@ const CandidateRegistration = () => {
       return;
     }
     
-    // Get all polls
+    // Load polls
     const allPolls = getPolls();
-    setPolls(allPolls);
     
-    // Filter only upcoming polls that haven't started yet
-    const upcoming = allPolls.filter(poll => {
-      const status = getPollStatus(poll.id);
-      return !status.hasStarted && !status.hasEnded;
+    // Show only active or upcoming polls
+    const availablePolls = allPolls.filter(poll => {
+      const now = new Date();
+      const endDate = new Date(poll.endDate);
+      return now <= endDate;
     });
     
-    setUpcomingPolls(upcoming);
-  }, [navigate, toast]);
+    setPolls(availablePolls);
+    
+    // If poll ID is provided in URL, select it
+    if (urlPollId) {
+      setSelectedPollId(urlPollId);
+    } else if (availablePolls.length > 0) {
+      setSelectedPollId(availablePolls[0].id);
+    }
+  }, [navigate, toast, urlPollId]);
   
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!selectedPoll) {
-      toast({
-        title: "Error",
-        description: "Please select a poll",
-        variant: "destructive",
-      });
-      return;
+  useEffect(() => {
+    if (selectedPollId) {
+      const poll = getPollById(selectedPollId);
+      setSelectedPoll(poll);
+      
+      if (poll) {
+        setPollStatus(getPollStatus(selectedPollId));
+      } else {
+        setPollStatus(null);
+      }
     }
-    
-    if (!candidateName.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter your candidate name",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Check if user is already registered for this poll
-    const currentUser = getCurrentUser();
-    if (!currentUser) return;
-    
-    const existingCandidates = getCandidates(selectedPoll);
-    if (existingCandidates.some(c => c.name === candidateName)) {
-      toast({
-        title: "Error",
-        description: "A candidate with this name is already registered for this poll",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Check poll status
-    const status = getPollStatus(selectedPoll);
-    if (status.hasStarted) {
-      toast({
-        title: "Error",
-        description: "This poll has already started. Registration closed.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const candidate = addCandidate({
-      name: candidateName,
-      imageUrl,
-      pollId: selectedPoll
-    });
-    
-    if (candidate) {
-      toast({
-        title: "Success",
-        description: "You have successfully registered as a candidate",
-      });
-      setCandidateName('');
-      setImageUrl('');
-      setSelectedPoll('');
-    } else {
-      toast({
-        title: "Error",
-        description: "Failed to register as a candidate",
-        variant: "destructive",
-      });
-    }
+  }, [selectedPollId]);
+  
+  const handlePollChange = (id: string) => {
+    setSelectedPollId(id);
   };
   
-  if (upcomingPolls.length === 0) {
-    return (
-      <Layout>
-        <h1 className="page-header">Candidate Registration</h1>
-        <div className="max-w-2xl mx-auto">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center p-10">
-                <p className="text-lg mb-4">There are currently no upcoming polls open for candidate registration.</p>
-                <Button onClick={() => navigate('/')}>Return to Homepage</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </Layout>
-    );
-  }
+  const handleCandidateAdded = () => {
+    if (selectedPollId) {
+      setPollStatus(getPollStatus(selectedPollId));
+    }
+    
+    toast({
+      title: "Success",
+      description: "You've been registered as a candidate!"
+    });
+  };
   
   return (
     <Layout>
-      <h1 className="page-header">Candidate Registration</h1>
-      
-      <div className="max-w-2xl mx-auto">
-        <Card>
-          <CardHeader>
-            <CardTitle>Register as a Candidate</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="poll">Select Poll</Label>
-                <select
-                  id="poll"
-                  value={selectedPoll}
-                  onChange={(e) => setSelectedPoll(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  required
-                >
-                  <option value="">-- Select a Poll --</option>
-                  {upcomingPolls.map((poll) => (
-                    <option key={poll.id} value={poll.id}>
+      <div className="max-w-3xl mx-auto">
+        <h1 className="text-3xl font-bold mb-8 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Candidate Registration</h1>
+        
+        {polls.length === 0 ? (
+          <Alert className="mb-8">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>No active polls</AlertTitle>
+            <AlertDescription>
+              There are currently no active or upcoming polls available for candidate registration.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <>
+            <div className="space-y-2 mb-8">
+              <Label htmlFor="poll-select">Select Poll</Label>
+              <Select value={selectedPollId || ''} onValueChange={handlePollChange}>
+                <SelectTrigger className="w-full border-blue-200">
+                  <SelectValue placeholder="Select a poll" />
+                </SelectTrigger>
+                <SelectContent>
+                  {polls.map((poll) => (
+                    <SelectItem key={poll.id} value={poll.id}>
                       {poll.title}
-                    </option>
+                    </SelectItem>
                   ))}
-                </select>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {selectedPoll && pollStatus && (
+              <div className="mb-8">
+                <div className="p-4 rounded-lg bg-blue-50 border border-blue-100">
+                  <h2 className="text-lg font-semibold text-blue-800">{selectedPoll.title}</h2>
+                  <p className="text-gray-600 my-2">{selectedPoll.description}</p>
+                  
+                  <div className="flex flex-wrap gap-4 mt-3 text-sm text-gray-500">
+                    <div>
+                      <span className="font-medium">Start:</span> {new Date(selectedPoll.startDate).toLocaleString()}
+                    </div>
+                    <div>
+                      <span className="font-medium">End:</span> {new Date(selectedPoll.endDate).toLocaleString()}
+                    </div>
+                    <div>
+                      <span className="font-medium">Candidates:</span> {pollStatus.candidateCount}
+                    </div>
+                  </div>
+                </div>
+                
+                {pollStatus.hasEnded ? (
+                  <Alert variant="destructive" className="mt-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Poll Ended</AlertTitle>
+                    <AlertDescription>
+                      This poll has already ended and is not accepting new candidates.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <div className="mt-6">
+                    <CandidateRegistrationForm 
+                      pollId={selectedPollId as string}
+                      onCandidateAdded={handleCandidateAdded}
+                    />
+                  </div>
+                )}
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="name">Candidate Name</Label>
-                <Input 
-                  id="name" 
-                  value={candidateName} 
-                  onChange={(e) => setCandidateName(e.target.value)} 
-                  placeholder="Enter your candidate name"
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="image">Image URL (Optional)</Label>
-                <Input 
-                  id="image" 
-                  value={imageUrl} 
-                  onChange={(e) => setImageUrl(e.target.value)} 
-                  placeholder="Enter image URL"
-                />
-              </div>
-              
-              <Button type="submit" className="w-full">
-                Register as Candidate
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+            )}
+          </>
+        )}
       </div>
     </Layout>
   );

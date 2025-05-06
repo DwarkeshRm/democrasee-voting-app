@@ -15,7 +15,6 @@ import Layout from '@/components/layout/Layout';
 import CandidateCard from '@/components/candidates/CandidateCard';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Check, Clock, Lock } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
 
 const PollVoting = () => {
   const { pollId } = useParams<{ pollId: string }>();
@@ -77,12 +76,8 @@ const PollVoting = () => {
     }
     
     if (now > endDate) {
-      toast({
-        title: "Poll ended",
-        description: "This poll has ended",
-        variant: "destructive",
-      });
-      navigate('/vote');
+      // If poll has ended, redirect to results
+      navigate(`/results?pollId=${pollId}`);
       return;
     }
     
@@ -153,12 +148,12 @@ const PollVoting = () => {
   
   return (
     <Layout>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">{poll.title}</h1>
+      <div className="mb-8 p-6 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-100">
+        <h1 className="text-3xl font-bold text-blue-800 mb-2">{poll.title}</h1>
         <p className="text-gray-600">{poll.description}</p>
         
         <div className="flex items-center mt-4 text-sm">
-          <Clock className="h-4 w-4 mr-1 text-gray-500" />
+          <Clock className="h-4 w-4 mr-1 text-blue-500" />
           <span className="text-gray-500">
             Voting ends: {new Date(poll.endDate).toLocaleString()}
           </span>
@@ -166,10 +161,10 @@ const PollVoting = () => {
       </div>
       
       {isVoted && (
-        <Alert className="mb-8 bg-green-50 border-success">
-          <Check className="h-4 w-4 text-success" />
-          <AlertTitle className="text-success">Vote recorded</AlertTitle>
-          <AlertDescription>
+        <Alert className="mb-8 bg-green-50 border border-green-200">
+          <Check className="h-4 w-4 text-green-600" />
+          <AlertTitle className="text-green-600">Vote recorded</AlertTitle>
+          <AlertDescription className="text-green-700">
             Your vote has been successfully recorded. Thank you for participating!
           </AlertDescription>
         </Alert>
@@ -198,7 +193,7 @@ const PollVoting = () => {
           </div>
           
           <div className="mt-10 text-center">
-            <Button onClick={handleExit} size="lg">
+            <Button onClick={handleExit} size="lg" className="bg-blue-600 hover:bg-blue-700">
               {isVoted ? "Exit" : "Back to Polls"}
             </Button>
           </div>

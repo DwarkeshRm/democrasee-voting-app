@@ -2,7 +2,7 @@
 export interface User {
   id: string;
   username: string;
-  password: string; // In a real app, this would be hashed
+  password: string;
   isAdmin: boolean;
 }
 
@@ -10,23 +10,25 @@ export interface Poll {
   id: string;
   title: string;
   description: string;
-  startDate: string; // ISO date string
-  endDate: string; // ISO date string
+  startDate: string;
+  endDate: string;
   isActive: boolean;
-  createdBy: string; // admin id
+  createdBy: string;
+  showSymbols?: boolean; // Option to show symbols for candidates instead of images
 }
 
 export interface Candidate {
   id: string;
   name: string;
-  imageUrl: string;
+  pollId: string;
+  imageUrl?: string;
+  symbol?: string; // Symbol for candidate if using symbols instead of images
   votes: number;
-  pollId: string; // which poll they're participating in
 }
 
 export interface Vote {
   userId: string;
   pollId: string;
   candidateId: string;
-  timestamp: string; // ISO date string
+  timestamp: string;
 }
