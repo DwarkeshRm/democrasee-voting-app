@@ -97,8 +97,8 @@ const CandidateRegistrationForm = ({ pollId, onCandidateAdded }: CandidateRegist
     }
     
     const candidate = showSymbols 
-      ? addCandidate({ name, pollId, symbol: selectedSymbol })
-      : addCandidate({ name, pollId, imageUrl });
+      ? addCandidate({ name, pollId, symbol: selectedSymbol, userId: currentUser.id })
+      : addCandidate({ name, pollId, imageUrl, userId: currentUser.id });
     
     if (candidate) {
       toast({
